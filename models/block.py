@@ -59,6 +59,10 @@ class NormalizationLayer(nn.Module):
         else:
             raise NotImplementedError('[INFO] The Normalization layer %s is not implemented !' % norm_type)
 
+    def forward(self, x):
+        out = self.norm(x)
+        return out
+
 # -----------------------------------------------------------------------------#
 # -----------------------------------------------------------------------------#
 
@@ -119,7 +123,7 @@ class Conv2DLayer(nn.Module):
         self.padding = nn.ReflectionPad2d(kernel_size // 2) 
 
         # Convolutional layer
-        self.conv = nn.Conv2D(in_features, out_features, kernel_size=kernel_size, stride=stride, bias=use_bias)
+        self.conv = nn.Conv2d(in_features, out_features, kernel_size=kernel_size, stride=stride, bias=use_bias)
 
         # Activation layer
         if activation == 'lk_relu':

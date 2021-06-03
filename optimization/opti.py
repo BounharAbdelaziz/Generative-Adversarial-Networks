@@ -73,7 +73,7 @@ class Optimization():
     else :
       print("[INFO] Started training a GAN on the MNIST Fashion dataset...")
 
-    for epoch in range(hyperparams.n_epochs):
+    for epoch in range(self.hyperparams.n_epochs):
       print("epoch = ",epoch," --------------------------------------------------------")
 
       for batch_idx, real_data in enumerate(dataloader) :

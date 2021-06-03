@@ -10,7 +10,7 @@ class Discriminator(nn.Module):
   def __init__(self, n_inputs=784, n_output=1, n_classes=10,
                norm_type='bn', norm_before=True, activation='lk_relu',  use_bias=True,
                 min_features = 16, max_features=256,
-                use_pad=use_pad, interpolation_mode=interpolation_mode, kernel_size=3,
+                use_pad=True, interpolation_mode='nearest', kernel_size=3,
                 down_steps=3, alpha_relu=0.15, cgan=True):
     """
     The discriminator is in an encoder shape, we encode the features to a smaller space of features and do the decisions.

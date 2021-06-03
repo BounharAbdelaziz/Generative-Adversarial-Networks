@@ -12,6 +12,7 @@ class GANLoss(nn.Module):
   
     def __init__(self, gan_type='vanilla' ):
         
+        super(GANLoss, self).__init__()
         self.gan_type = gan_type
 
         # vanilla GAN, min_D max_G log(D(x)) + log(1 - D(G(z)))

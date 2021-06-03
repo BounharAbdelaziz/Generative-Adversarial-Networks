@@ -11,8 +11,8 @@ class Generator(nn.Module):
   def __init__( self, norm_type='bn', norm_before=True, activation='lk_relu', alpha_relu=0.15, use_bias=True,
                 min_features = 16, max_features=256,
                 n_inputs=128, n_output = 256,
-                use_pad=use_pad, interpolation_mode=interpolation_mode, kernel_size=3,
-                img_dim=784, n_classes=10, cgan=True, down_steps=3, bottleneck=2, up_steps=2):
+                use_pad=True, interpolation_mode='nearest', kernel_size=3,
+                img_dim=784, n_classes=10, cgan=True, down_steps=3, bottleneck_size=2, up_steps=2):
     """ 
     The discriminator is in an encoder-decoder shape, we start by a small lattent vector for which we increase the dimensions to the desired image dimension.
     """
@@ -48,19 +48,21 @@ class Generator(nn.Module):
         n_inputs = features_cliping(n_inputs // 2)
         n_output = features_cliping(n_output // 2)
       
+    self.encoder = nn.Sequential(*self.encoder)
 
     ##########################################
     #####            Bottleneck           ####
     ##########################################
 
     self.bottleneck = []
-    for i in range(bottleneck):
+    for i in range(bottleneck_size):
 
       self.bottleneck.append(
         ConvResidualBlock(in_features=n_output, out_features=n_output, kernel_size=kernel_size, scale='none', use_pad=use_pad, use_bias=use_bias, norm_type=norm_type, norm_before=norm_before, 
                           activation=activation, alpha_relu=alpha_relu, interpolation_mode=interpolation_mode)
       )
 
+    self.bottleneck = nn.Sequential(*self.bottleneck)
 
     ##########################################
     #####             Decoder             ####
@@ -76,10 +78,12 @@ class Generator(nn.Module):
       
       n_output = features_cliping(n_output * 2)
 
-      self.bottleneck.append(
+      self.decoder.append(
         ConvResidualBlock(in_features=n_inputs, out_features=n_output, kernel_size=kernel_size, scale='up', use_pad=use_pad, use_bias=use_bias, norm_type=norm_type, norm_before=norm_before, 
                           activation=activation, alpha_relu=alpha_relu, interpolation_mode=interpolation_mode)
       )
+
+    self.decoder = nn.Sequential(*self.decoder)
 
     if cgan :
       out_dim = img_dim + n_classes
