@@ -9,8 +9,9 @@ class Hyperparameters():
     self.batch_size = batch_size
     self.n_epochs = n_epochs
     self.latent_dim = latent_dim
+    self.cgan = cgan
     # for the conditional GAN we include he one hot vector
-    if cgan :
+    if self.cgan :
       self.input_dim_gen = latent_dim + n_classes
     else :
       self.input_dim_gen = latent_dim

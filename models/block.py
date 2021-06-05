@@ -87,7 +87,7 @@ class LinearLayer(nn.Module):
         self.norm = NormalizationLayer(in_features=out_features, norm_type=norm_type)
 
     def forward(self, x):
-
+        
         out = self.linear(x)
 
         if self.norm_before :
@@ -123,7 +123,7 @@ class Conv2DLayer(nn.Module):
         self.padding = nn.ReflectionPad2d(kernel_size // 2) 
 
         # Convolutional layer
-        self.conv = nn.Conv2d(in_features, out_features, kernel_size=kernel_size, stride=stride, bias=use_bias)
+        self.conv = nn.Conv2d(in_channels=in_features, out_channels=out_features, kernel_size=kernel_size, stride=stride, bias=use_bias)
 
         # Activation layer
         if activation == 'lk_relu':
@@ -135,14 +135,14 @@ class Conv2DLayer(nn.Module):
         self.norm = NormalizationLayer(in_features=out_features, norm_type=norm_type)
 
     def forward(self, x):
-
+        
         # upsampling or downsampling 
         out = self.scale_layer(x)
 
         if self.use_pad :
             out = self.padding(out)
 
-        out = self.conv(x)
+        out = self.conv(out)
 
         if self.norm_before :
             out = self.norm(out)
@@ -200,7 +200,7 @@ class ConvResidualBlock(nn.Module):
 
         identity = self.identity(x)
         out = self.conv1(x)
-        out = self.conv2(x)
+        out = self.conv2(out)
         out = out + identity
 
         return out
@@ -213,7 +213,7 @@ class LinearResidualBlock(nn.Module):
         It can be expressed in the form : F(x) + x, where x is the input and F modeling one or many layers.
         The benefits of using Residual Blocks is to overcome the vanishing gradients problem, and thus training very deep networks.
     """
-    def __init__(self, in_features, out_features, use_bias=True, norm_type='bn', norm_before=True, activation='lk_relu', alpha_relu=0.15, interpolation_mode='nearest'):
+    def __init__(self, in_features, out_features, use_bias=True, norm_type='bn', norm_before=True, activation='lk_relu', alpha_relu=0.15):
         super().__init__()
 
         # Sometimes, doing normalization before activation helps stabilizing the training
@@ -235,7 +235,7 @@ class LinearResidualBlock(nn.Module):
 
         identity = self.identity(x)
         out = self.linear1(x)
-        out = self.linear2(x)
+        out = self.linear2(out)
         out = out + identity
 
         return out

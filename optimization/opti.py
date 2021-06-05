@@ -11,7 +11,7 @@ from optimization.loss import GANLoss
 
 class Optimization():
   
-  def __init__(self, gen, disc, hyperparams, cgan=True, n_input=784, lambda_gan_gen=1.5, lambda_gan_disc=0.85):
+  def __init__(self, gen, disc, hyperparams, cgan=True, n_input=784, lambda_gan_gen=1.85, lambda_gan_disc=0.85):
 
     self.generator = gen
     self.discriminator = disc
@@ -44,41 +44,50 @@ class Optimization():
 
     _, loss_G = self.criterionGAN(disc_real, disc_fake, disc_pred)
     loss_G = loss_G * self.lambda_gan_gen
-    loss_G.backward()
+    with torch.autograd.set_detect_anomaly(True) :
+      loss_G.backward()
+
+    return loss_G
 
   def backward_D(self, disc_real, disc_fake, disc_pred):
 
     loss_D, _ = self.criterionGAN(disc_real, disc_fake, disc_pred)
     loss_D = loss_D * self.lambda_gan_disc
-    loss_D.backward()
+    with torch.autograd.set_detect_anomaly(True) :
+      loss_D.backward()
+
+    return loss_D
   
   def optimize_network(self, disc_real, disc_fake, disc_pred):
 
     # run backprop on the Generator
     self.opt_gen.zero_grad()
-    self.backward_G(disc_real, disc_fake, disc_pred)
-    self.opt_gen.step()
+    loss_G = self.backward_G(disc_real, disc_fake, disc_pred)
+    # self.opt_gen.step()
     
     # run backprop on the Discriminator
     self.opt_disc.zero_grad()
-    self.backward_D(disc_real, disc_fake, disc_pred)
+    loss_D = self.backward_D(disc_real, disc_fake, disc_pred)
+    self.opt_gen.step()
     self.opt_disc.step()
+    print("[INFO] loss_D =  ",loss_D)
+    print("[INFO] loss_G =  ",loss_G)
 
+    return loss_D, loss_G
 
-  def train(self, dataloader, steps_train_disc=1, experiment="MNIST_FASHION", h=28, w=28):
+  def train(self, dataloader, steps_train_disc=1, n_channels=256, experiment="MNIST_FASHION", h=28, w=28):
     step = 0
     
     if self.cgan :
-      print("[INFO] Started training a Conditional GAN on the MNIST Fashion dataset...")
+      print("[INFO] Started training a Conditional GAN on the MNIST Fashion dataset, using device ",self.hyperparams.device,"...")
     else :
-      print("[INFO] Started training a GAN on the MNIST Fashion dataset...")
+      print("[INFO] Started training a GAN on the MNIST Fashion dataset, using device ",self.hyperparams.device,"...")
 
     for epoch in range(self.hyperparams.n_epochs):
       print("epoch = ",epoch," --------------------------------------------------------")
 
-      for batch_idx, real_data in enumerate(dataloader) :
-        
-        real_data = real_data.view(-1, self.hyperparams.input_dim_gen).to(self.hyperparams.device)
+      for batch_idx, real_data in enumerate(dataloader) :        
+        real_data = real_data.view(-1, self.hyperparams.img_dim).to(self.hyperparams.device)
 
         batch_size = real_data.shape[0]
 
@@ -87,7 +96,7 @@ class Optimization():
         ##########################################
 
         # we generate an image from a noise vector
-        noise = torch.randn(self.hyperparams.batch_size, self.hyperparams.latent_dim).to(self.hyperparams.device)
+        noise = torch.randn(self.hyperparams.batch_size, n_channels, self.hyperparams.latent_dim, self.hyperparams.latent_dim).to(self.hyperparams.device)
         fake_data = self.generator(noise)
         disc_pred = self.discriminator(fake_data.float()).view(-1)
 
@@ -95,7 +104,7 @@ class Optimization():
         #### Launch training of Discriminator ####
         ##########################################
           
-        if cgan :
+        if self.hyperparams.cgan :
           y_fake = torch.eye(self.hyperparams.n_classes)[np.argmax(torch.randn((self.hyperparams.batch_size, self.hyperparams.n_classes)) , axis=1)].to(self.hyperparams.device)
           noise = torch.column_stack((noise, y_fake))
 
@@ -103,10 +112,10 @@ class Optimization():
         fake_data = self.generator(noise)
 
         # prediction of the discriminator on real an fake images in the batch
-        disc_real = self.discriminator(real_data.float()).view(-1)
         disc_fake = self.discriminator(fake_data.float()).view(-1)
+        disc_real = self.discriminator(real_data.float()).view(-1)
 
-        self.optimize_network(disc_real, disc_fake, disc_pred)
+        loss_D, loss_G = self.optimize_network(disc_real, disc_fake, disc_pred)
         
       # state after this epoch
       with torch.no_grad():
