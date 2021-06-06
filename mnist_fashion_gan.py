@@ -27,6 +27,9 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int, default=2)
     parser.add_argument("--lr", type=float, default=1e-04)
     parser.add_argument("--with_normalization", type=int, default=0)
+    parser.add_argument("--save_weights", type=int, default=1, help="number of iterations before saving the weights")
+    parser.add_argument("--show_advance", type=int, default=10, help="number of iterations before showing advance (loss, images) in tensorboard")
+
     args = parser.parse_args()
 
     # setting random seed to have same bahaviors when we re-run the same experiment.
@@ -40,7 +43,9 @@ if __name__ == "__main__":
     n_epochs = args.n_epochs
     batch_size= args.batch_size
     lr= args.lr
-    hyperparams = Hyperparameters(batch_size=batch_size,n_epochs=n_epochs, cgan=cgan, latent_dim=latent_dim, lr=lr)
+    save_weights= args.save_weights
+    show_advance= args.show_advance
+    hyperparams = Hyperparameters(batch_size=batch_size,n_epochs=n_epochs, cgan=cgan, latent_dim=latent_dim, lr=lr, show_advance=show_advance, save_weights=save_weights)
 
     # dateset
     with_normalization = args.with_normalization
@@ -59,6 +64,8 @@ if __name__ == "__main__":
     print("batch_size : ",batch_size)
     print("lr : ",lr)
     print("with_normalization : ",with_normalization)
+    print("save_weights : ",save_weights)
+    print("show_advance : ",show_advance)
     print("## ------------------------------------------------------------------------- ##")
     
     # Models

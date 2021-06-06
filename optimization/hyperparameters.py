@@ -2,7 +2,7 @@ import torch
 
 class Hyperparameters():
   
-  def __init__(self, lr=0.00002, batch_size=32, n_epochs=50, latent_dim=128, img_dim=784, n_output_disc=1, n_classes=10, alpha_relu=0.15, cgan=True):
+  def __init__(self, lr=0.00002, batch_size=32, n_epochs=50, latent_dim=128, img_dim=784, n_output_disc=1, n_classes=10, alpha_relu=0.15, cgan=True, show_advance=25, save_weights=1000):
 
     self.device = "cuda" if torch.cuda.is_available() else "cpu"
     self.lr = lr
@@ -20,3 +20,5 @@ class Hyperparameters():
     self.n_output_disc = n_output_disc
     self.n_classes = n_classes
     self.alpha_relu=alpha_relu
+    self.show_advance=show_advance
+    self.save_weights=save_weights

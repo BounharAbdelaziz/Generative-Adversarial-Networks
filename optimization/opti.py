@@ -9,9 +9,11 @@ import matplotlib.pyplot as plt
 import utils.helpers as helper
 from optimization.loss import GANLoss
 
+import os
+
 class Optimization():
   
-  def __init__(self, gen, disc, hyperparams, cgan=True, n_input=784, lambda_gan_gen=1.85, lambda_gan_disc=0.85):
+  def __init__(self, gen, disc, hyperparams, cgan=True, n_input=784, lambda_gan_gen=1.85, lambda_gan_disc=0.85, n_channels=256):
 
     self.generator = gen
     self.discriminator = disc
@@ -23,9 +25,9 @@ class Optimization():
     self.cgan = cgan
     self.lambda_gan_gen = lambda_gan_gen
     self.lambda_gan_disc = lambda_gan_disc
-
+    self.n_channels = n_channels
     # Fixed noise vector to see the evolution of the generated images
-    self.fixed_noise_vect = torch.randn(self.hyperparams.batch_size, self.hyperparams.latent_dim).to(self.hyperparams.device)
+    self.fixed_noise_vect = torch.randn(self.hyperparams.batch_size, self.n_channels, self.hyperparams.latent_dim, self.hyperparams.latent_dim).to(self.hyperparams.device)
     if cgan :
       fixed_y_fake = torch.eye(self.hyperparams.n_classes)[np.argmax(torch.randn((self.hyperparams.batch_size, self.hyperparams.n_classes)) , axis=1)].to(self.hyperparams.device)
       self.fixed_noise_vect = torch.column_stack((self.fixed_noise_vect, fixed_y_fake))
@@ -75,18 +77,28 @@ class Optimization():
 
     return loss_D, loss_G
 
-  def train(self, dataloader, steps_train_disc=1, n_channels=256, experiment="MNIST_FASHION", h=28, w=28):
+  def train(self, dataloader, steps_train_disc=1, experiment="MNIST_FASHION", h=28, w=28):
     step = 0
+    cpt = 0
+    self.PATH_CKPT = "./check_points/"+experiment+"/"
     
     if self.cgan :
       print("[INFO] Started training a Conditional GAN on the MNIST Fashion dataset, using device ",self.hyperparams.device,"...")
     else :
       print("[INFO] Started training a GAN on the MNIST Fashion dataset, using device ",self.hyperparams.device,"...")
 
+    if self.hyperparams.device != 'cpu':
+      # using DataParallel tu copy the Tensors on all available GPUs
+      print("[INFO] Copying tensors to all available GPUs...")
+
+      self.generator = nn.DataParallel(self.generator)
+      self.discriminator = nn.DataParallel(self.discriminator)
+
     for epoch in range(self.hyperparams.n_epochs):
       print("epoch = ",epoch," --------------------------------------------------------")
 
       for batch_idx, real_data in enumerate(dataloader) :        
+        cpt = cpt + 1
         real_data = real_data.view(-1, self.hyperparams.img_dim).to(self.hyperparams.device)
 
         batch_size = real_data.shape[0]
@@ -96,7 +108,7 @@ class Optimization():
         ##########################################
 
         # we generate an image from a noise vector
-        noise = torch.randn(self.hyperparams.batch_size, n_channels, self.hyperparams.latent_dim, self.hyperparams.latent_dim).to(self.hyperparams.device)
+        noise = torch.randn(self.hyperparams.batch_size, self.n_channels, self.hyperparams.latent_dim, self.hyperparams.latent_dim).to(self.hyperparams.device)
         fake_data = self.generator(noise)
         disc_pred = self.discriminator(fake_data.float()).view(-1)
 
@@ -117,15 +129,29 @@ class Optimization():
 
         loss_D, loss_G = self.optimize_network(disc_real, disc_fake, disc_pred)
         
-      # state after this epoch
-      with torch.no_grad():
-        fake_data_ = self.generator(self.fixed_noise_vect)
-        # self.plot_image(fake_data_)
-        fake_data_ = fake_data_[:, :self.hyperparams.img_dim].reshape(-1, 1, h, w)
-        real_data_ = real_data[:, :self.hyperparams.img_dim].reshape(-1, 1, h, w)
+        if cpt % self.hyperparams.show_advance == 0 and cpt!=0 :
 
-        img_fake = torchvision.utils.make_grid(fake_data_, normalize=True)
-        img_real = torchvision.utils.make_grid(real_data_, normalize=True)
+          # show advance
+          print("[INFO] logging advance...")
+          with torch.no_grad():
+            print("[INFO] fixed_noise_vect : ",self.fixed_noise_vect.shape)
 
-        helper.write_logs_tb(experiment, img_fake, img_real, loss_D, loss_G, step, epoch, hyperparams, with_print_logs=True)
-        step = step + 1
+            fake_data_ = self.generator(self.fixed_noise_vect)
+            # self.plot_image(fake_data_)
+            fake_data_ = fake_data_[:, :self.hyperparams.img_dim].reshape(-1, 1, h, w)
+            real_data_ = real_data[:, :self.hyperparams.img_dim].reshape(-1, 1, h, w)
+
+            img_fake = torchvision.utils.make_grid(fake_data_, normalize=True)
+            img_real = torchvision.utils.make_grid(real_data_, normalize=True)
+
+            helper.write_logs_tb(experiment, img_fake, img_real, loss_D, loss_G, step, epoch, self.hyperparams, with_print_logs=True)
+            step = step + 1
+
+        if cpt % self.hyperparams.save_weights == 0 and cpt!=0 :
+
+          # show advance
+          print("[INFO] Saving weights...")
+          print(os.curdir)
+          print(os.path.abspath(self.PATH_CKPT))
+          torch.save(self.discriminator.state_dict(), os.path.join(self.PATH_CKPT,"D_it_"+str(cpt)+".pth"))
+          torch.save(self.generator.state_dict(), os.path.join(self.PATH_CKPT,"G_it_"+str(cpt)+".pth"))
