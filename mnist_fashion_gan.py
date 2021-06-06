@@ -1,6 +1,7 @@
 import warnings
 warnings.filterwarnings('ignore')
 
+import argparse
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -17,47 +18,67 @@ from models.discriminator import *
 from models.generator import *
 
 
-# Vanilla GAN
-cgan=False
+if __name__ == "__main__":
 
-# Model params
-latent_dim = 64
-n_epochs = 200
-batch_size=2
-hyperparams = Hyperparameters(batch_size=batch_size,n_epochs=n_epochs, cgan=cgan, latent_dim=latent_dim, lr=1e-04)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--cgan", type=int, default=0)
+    parser.add_argument("--latent_dim", type=int, default=64)
+    parser.add_argument("--n_epochs", type=int, default=200)
+    parser.add_argument("--batch_size", type=int, default=2)
+    parser.add_argument("--lr", type=float, default=1e-04)
+    parser.add_argument("--with_normalization", type=int, default=0)
+    args = parser.parse_args()
 
-# dateset
-with_normalization=False
-mnist_data = MnistFashionData(path="./data/fashion-mnist_train.csv", cgan=cgan, with_normalization=with_normalization, bs=batch_size)
+    # setting random seed to have same bahaviors when we re-run the same experiment.
+    np.random.seed(5)
 
-# Fixed noise vector to see the evolution of the generated images during the training
-fixed_noise_vect = torch.randn((hyperparams.batch_size,hyperparams.input_dim_gen)).to(hyperparams.device)
+    # Type of GAN (Vanilla GAN or Conditional GAN)
+    cgan = args.cgan
 
-print(hyperparams.input_dim_gen)
-print(hyperparams.lr)
-print(hyperparams.device)
-print(fixed_noise_vect.shape)
+    # Model params
+    latent_dim = args.latent_dim
+    n_epochs = args.n_epochs
+    batch_size= args.batch_size
+    lr= args.lr
+    hyperparams = Hyperparameters(batch_size=batch_size,n_epochs=n_epochs, cgan=cgan, latent_dim=latent_dim, lr=lr)
 
-# Models
-disc = Discriminator(cgan=cgan, 
-                     n_inputs=hyperparams.img_dim, 
-                     n_classes=hyperparams.n_classes,  
-                     output_dim=hyperparams.n_output_disc, 
-                     alpha_relu=hyperparams.alpha_relu,
-                     norm_type='bn').to(hyperparams.device)
+    # dateset
+    with_normalization = args.with_normalization
+    mnist_data = MnistFashionData(path="./data/fashion-mnist_train.csv", cgan=cgan, with_normalization=with_normalization, bs=batch_size)
 
-gen = Generator(cgan=cgan, 
-                n_inputs=hyperparams.latent_dim, 
-                img_dim=hyperparams.img_dim, 
-                n_classes=hyperparams.n_classes, 
-                alpha_relu=hyperparams.alpha_relu,
-                norm_type='bn').to(hyperparams.device)
+    # Fixed noise vector to see the evolution of the generated images during the training
+    fixed_noise_vect = torch.randn((hyperparams.batch_size,hyperparams.input_dim_gen)).to(hyperparams.device)
 
-print("Disc model : ")
-print(disc)
+    print("## ------------------------------------------------------------------------- ##")
+    print("hyperparams.input_dim_gen : ",hyperparams.input_dim_gen)
+    print("latent_dim : ",latent_dim)
+    print("hyperparams.lr : ", hyperparams.lr)
+    print("hyperparams.device : ", hyperparams.device)
+    print("fixed_noise_vect.shape : ", fixed_noise_vect.shape)
+    print("n_epochs : ",n_epochs)
+    print("batch_size : ",batch_size)
+    print("lr : ",lr)
+    print("with_normalization : ",with_normalization)
+    print("## ------------------------------------------------------------------------- ##")
+    
+    # Models
+    disc = Discriminator(cgan=cgan, 
+                        n_inputs=hyperparams.img_dim, 
+                        n_classes=hyperparams.n_classes,  
+                        output_dim=hyperparams.n_output_disc, 
+                        alpha_relu=hyperparams.alpha_relu,
+                        norm_type='bn').to(hyperparams.device)
 
-# Optimizers
-optimization = Optimization(gen, disc, hyperparams, cgan)
+    gen = Generator(cgan=cgan, 
+                    n_inputs=hyperparams.latent_dim, 
+                    img_dim=hyperparams.img_dim, 
+                    n_classes=hyperparams.n_classes, 
+                    alpha_relu=hyperparams.alpha_relu,
+                    norm_type='bn').to(hyperparams.device)
 
-# Start training
-optimization.train(mnist_data.dataloader, experiment="vanilla")
+
+    # Optimizers
+    optimization = Optimization(gen, disc, hyperparams, cgan)
+
+    # Start training
+    optimization.train(mnist_data.dataloader, experiment="vanilla")

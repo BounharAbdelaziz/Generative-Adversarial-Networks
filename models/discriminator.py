@@ -39,18 +39,12 @@ class Discriminator(nn.Module):
     #   ConvResidualBlock(in_features=n_inputs, out_features=n_output, kernel_size=kernel_size, scale='down', use_pad=use_pad, use_bias=use_bias, norm_type=norm_type, norm_before=norm_before, 
     #                     activation=activation, alpha_relu=alpha_relu, interpolation_mode=interpolation_mode)
     # )
-    print("disc encoder -----------------")
     
     for i in range(down_steps):
       
       if i == 0 :
         n_inputs = n_output
         n_output = features_cliping(n_output // 2)
-
-
-      print("i : ",i)
-      print("n_inputs : ",n_inputs)
-      print("n_output : ",n_output)
 
       # self.encoder.append(
       #   ConvResidualBlock(in_features=n_inputs, out_features=n_output, kernel_size=kernel_size, scale='down', use_pad=use_pad, use_bias=use_bias, norm_type=norm_type, norm_before=norm_before, 
