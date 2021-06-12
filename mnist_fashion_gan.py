@@ -24,10 +24,10 @@ if __name__ == "__main__":
     parser.add_argument("--cgan", type=int, default=0)
     parser.add_argument("--latent_dim", type=int, default=64)
     parser.add_argument("--n_epochs", type=int, default=200)
-    parser.add_argument("--batch_size", type=int, default=2)
+    parser.add_argument("--batch_size", type=int, default=1)
     parser.add_argument("--lr", type=float, default=1e-04)
     parser.add_argument("--with_normalization", type=int, default=0)
-    parser.add_argument("--save_weights", type=int, default=1, help="number of iterations before saving the weights")
+    parser.add_argument("--save_weights", type=int, default=5000, help="number of iterations before saving the weights")
     parser.add_argument("--show_advance", type=int, default=10, help="number of iterations before showing advance (loss, images) in tensorboard")
 
     args = parser.parse_args()
@@ -66,6 +66,8 @@ if __name__ == "__main__":
     print("with_normalization : ",with_normalization)
     print("save_weights : ",save_weights)
     print("show_advance : ",show_advance)
+    print("## ------------------------------------------------------------------------- ##")
+    print("[INFO] Started training using device : ",hyperparams.device)
     print("## ------------------------------------------------------------------------- ##")
     
     # Models

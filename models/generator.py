@@ -1,7 +1,11 @@
+import torch
 import torch.nn as nn
 from torch.nn import Module, Linear, Conv2d
 from torch.nn import Softmax, ReLU, LeakyReLU, Sigmoid, Tanh
 from models.block import LinearLayer, ConvResidualBlock
+
+import functools
+import operator
 
 class Generator(nn.Module):
 
@@ -95,7 +99,10 @@ class Generator(nn.Module):
 
     # output layer
     self.flatten = nn.Flatten()
-    n_output = 262144
+    n_output = 262144*1
+    # num_features_before_fcnn = functools.reduce(operator.mul, list(self(torch.rand(1, *(self.encoder[0].in_features))).shape))
+
+    # print("num_features_before_fcnn : ",num_features_before_fcnn)
     self.out_layer = LinearLayer(in_features=n_output, out_features=out_dim, norm_type='none', activation=activation, alpha_relu=alpha_relu, norm_before=norm_before, use_bias=use_bias)
 
   # -----------------------------------------------------------------------------#

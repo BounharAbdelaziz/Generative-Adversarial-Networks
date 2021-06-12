@@ -7,9 +7,10 @@ from torch.optim import Adam
 import matplotlib.pyplot as plt
 
 import utils.helpers as helper
-from optimization.loss import GANLoss
+from optimization.loss import GenLoss, DiscLoss
 
 import os
+from tqdm import tqdm
 
 class Optimization():
   
@@ -21,11 +22,13 @@ class Optimization():
     self.opt_gen = Adam(self.generator.parameters(), lr=hyperparams.lr)
     self.opt_disc = Adam(self.discriminator.parameters(), lr=hyperparams.lr)
     self.hyperparams = hyperparams
-    self.criterionGAN = GANLoss()
+    self.criterionGen = GenLoss()
+    self.criterionDisc = DiscLoss()
     self.cgan = cgan
     self.lambda_gan_gen = lambda_gan_gen
     self.lambda_gan_disc = lambda_gan_disc
     self.n_channels = n_channels
+
     # Fixed noise vector to see the evolution of the generated images
     self.fixed_noise_vect = torch.randn(self.hyperparams.batch_size, self.n_channels, self.hyperparams.latent_dim, self.hyperparams.latent_dim).to(self.hyperparams.device)
     if cgan :
@@ -40,42 +43,40 @@ class Optimization():
 
     plt.imshow(img)
     plt.show()
+  
+  
+  def optimize_network(self, disc_real, disc_fake):
 
+    # run backprop on the Generator
+    self.opt_gen.zero_grad()
+    loss_G = self.backward_G(disc_fake)
+    self.opt_gen.step()
+    
+    # run backprop on the Discriminator
+    self.opt_disc.zero_grad()
+    loss_D = self.backward_D(disc_real, disc_fake)
+    self.opt_disc.step()
 
-  def backward_G(self, disc_real, disc_fake, disc_pred):
+    return loss_D, loss_G
+  
+  def backward_G(self, disc_fake):
 
-    _, loss_G = self.criterionGAN(disc_real, disc_fake, disc_pred)
+    loss_G = self.criterionGen(disc_fake)
     loss_G = loss_G * self.lambda_gan_gen
     with torch.autograd.set_detect_anomaly(True) :
-      loss_G.backward()
+      loss_G.backward(retain_graph=True)
 
     return loss_G
 
-  def backward_D(self, disc_real, disc_fake, disc_pred):
+  def backward_D(self, disc_real, disc_fake):
 
-    loss_D, _ = self.criterionGAN(disc_real, disc_fake, disc_pred)
+    loss_D = self.criterionDisc(disc_real, disc_fake)
     loss_D = loss_D * self.lambda_gan_disc
+
     with torch.autograd.set_detect_anomaly(True) :
       loss_D.backward()
 
     return loss_D
-  
-  def optimize_network(self, disc_real, disc_fake, disc_pred):
-
-    # run backprop on the Generator
-    self.opt_gen.zero_grad()
-    loss_G = self.backward_G(disc_real, disc_fake, disc_pred)
-    # self.opt_gen.step()
-    
-    # run backprop on the Discriminator
-    self.opt_disc.zero_grad()
-    loss_D = self.backward_D(disc_real, disc_fake, disc_pred)
-    self.opt_gen.step()
-    self.opt_disc.step()
-    print("[INFO] loss_D =  ",loss_D)
-    print("[INFO] loss_G =  ",loss_G)
-
-    return loss_D, loss_G
 
   def train(self, dataloader, steps_train_disc=1, experiment="MNIST_FASHION", h=28, w=28):
     step = 0
@@ -90,11 +91,11 @@ class Optimization():
     if self.hyperparams.device != 'cpu':
       # using DataParallel tu copy the Tensors on all available GPUs
       print("[INFO] Copying tensors to all available GPUs...")
+      device_ids = [i for i in range(torch.cuda.device_count())]
+      self.generator = nn.DataParallel(self.generator, device_ids)
+      self.discriminator = nn.DataParallel(self.discriminator, device_ids)
 
-      self.generator = nn.DataParallel(self.generator)
-      self.discriminator = nn.DataParallel(self.discriminator)
-
-    for epoch in range(self.hyperparams.n_epochs):
+    for epoch in tqdm(range(self.hyperparams.n_epochs)):
       print("epoch = ",epoch," --------------------------------------------------------")
 
       for batch_idx, real_data in enumerate(dataloader) :        
@@ -110,7 +111,7 @@ class Optimization():
         # we generate an image from a noise vector
         noise = torch.randn(self.hyperparams.batch_size, self.n_channels, self.hyperparams.latent_dim, self.hyperparams.latent_dim).to(self.hyperparams.device)
         fake_data = self.generator(noise)
-        disc_pred = self.discriminator(fake_data.float()).view(-1)
+        disc_fake = self.discriminator(fake_data.float().detach()).view(-1)
 
         ##########################################
         #### Launch training of Discriminator ####
@@ -121,15 +122,18 @@ class Optimization():
           noise = torch.column_stack((noise, y_fake))
 
         # noise = torch.randn(batch_size, self.hyperparams.input_dim_gen).to(self.hyperparams.device)
-        fake_data = self.generator(noise)
+        # fake_data = self.generator(noise)
 
         # prediction of the discriminator on real an fake images in the batch
-        disc_fake = self.discriminator(fake_data.float()).view(-1)
+        # disc_fake = self.discriminator(fake_data.float()).view(-1)
         disc_real = self.discriminator(real_data.float()).view(-1)
 
-        loss_D, loss_G = self.optimize_network(disc_real, disc_fake, disc_pred)
-        
-        if cpt % self.hyperparams.show_advance == 0 and cpt!=0 :
+        # Gradient steps for the Generator and the Discriminator w.r.t there respective loss.
+        loss_D, loss_G = self.optimize_network(disc_real, disc_fake)
+        print("[INFO] loss_D =  ",loss_D)
+        print("[INFO] loss_G =  ",loss_G)
+
+        if cpt % self.hyperparams.show_advance == 0 :
 
           # show advance
           print("[INFO] logging advance...")
@@ -145,7 +149,7 @@ class Optimization():
             img_real = torchvision.utils.make_grid(real_data_, normalize=True)
 
             helper.write_logs_tb(experiment, img_fake, img_real, loss_D, loss_G, step, epoch, self.hyperparams, with_print_logs=True)
-            step = step + 1
+            step = step + cpt
 
         if cpt % self.hyperparams.save_weights == 0 and cpt!=0 :
 
