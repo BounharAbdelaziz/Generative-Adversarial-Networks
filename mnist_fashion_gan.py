@@ -19,7 +19,7 @@ from models.generator import *
 
 
 if __name__ == "__main__":
-
+    # python3 mnist_fashion_gan.py --n_epochs 600 --batch_size 64 --show_advance 50
     parser = argparse.ArgumentParser()
     parser.add_argument("--cgan", type=int, default=0)
     parser.add_argument("--latent_dim", type=int, default=64)
