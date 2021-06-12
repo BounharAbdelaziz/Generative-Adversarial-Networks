@@ -22,11 +22,11 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--cgan", type=int, default=0)
+    parser.add_argument("--with_normalization", type=int, default=0)
     parser.add_argument("--latent_dim", type=int, default=64)
     parser.add_argument("--n_epochs", type=int, default=200)
-    parser.add_argument("--batch_size", type=int, default=1)
+    parser.add_argument("--batch_size", type=int, default=16)
     parser.add_argument("--lr", type=float, default=1e-04)
-    parser.add_argument("--with_normalization", type=int, default=0)
     parser.add_argument("--save_weights", type=int, default=5000, help="number of iterations before saving the weights")
     parser.add_argument("--show_advance", type=int, default=10, help="number of iterations before showing advance (loss, images) in tensorboard")
 
