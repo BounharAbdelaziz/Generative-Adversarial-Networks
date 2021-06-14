@@ -14,26 +14,27 @@ from torchvision import transforms
 from datasets.mnist_fashion_data import *
 from optimization.hyperparameters import *
 from optimization.opti import *
-from models.discriminator import *
-from models.generator import *
+from models.mnist_fashion_discriminator import *
+from models.mnist_fashion_generator import *
 
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--cgan", type=int, default=0)
-    parser.add_argument("--with_normalization", type=int, default=0)
-    parser.add_argument("--latent_dim", type=int, default=64)
-    parser.add_argument("--n_epochs", type=int, default=200)
-    parser.add_argument("--batch_size", type=int, default=16)
-    parser.add_argument("--lr", type=float, default=1e-04)
-    parser.add_argument("--save_weights", type=int, default=5000, help="number of iterations before saving the weights")
-    parser.add_argument("--show_advance", type=int, default=10, help="number of iterations before showing advance (loss, images) in tensorboard")
+    parser.add_argument("--cgan", type=int, default=0, help="Train a Vanilla GAN or Conditional GAN. Default to 0 (False).")
+    parser.add_argument("--with_normalization", type=int, default=1, help="Normalize the dataset.")
+    parser.add_argument("--latent_dim", type=int, default=64, help="Latent vector to input to the GAN.")
+    parser.add_argument("--n_epochs", type=int, default=200, help="Number of training epochs.")
+    parser.add_argument("--batch_size", type=int, default=16, help="Number of input datas in the batch.")
+    parser.add_argument("--lr", type=float, default=1e-04, help="Learning rate.")
+    parser.add_argument("--save_weights", type=int, default=5000, help="Number of iterations before saving the weights")
+    parser.add_argument("--show_advance", type=int, default=10, help="Number of iterations before showing advance (loss, images) in tensorboard")
 
     args = parser.parse_args()
 
     # setting random seed to have same bahaviors when we re-run the same experiment.
     np.random.seed(5)
+    torch.manual_seed(5)
 
     # Type of GAN (Vanilla GAN or Conditional GAN)
     cgan = args.cgan
@@ -71,23 +72,37 @@ if __name__ == "__main__":
     print("## ------------------------------------------------------------------------- ##")
     
     # Models
-    disc = Discriminator(cgan=cgan, 
+    disc = MnistFashionDiscriminator(cgan=cgan, 
                         n_inputs=hyperparams.img_dim, 
                         n_classes=hyperparams.n_classes,  
                         output_dim=hyperparams.n_output_disc, 
+                        activation='lk_relu',
                         alpha_relu=hyperparams.alpha_relu,
-                        norm_type='bn').to(hyperparams.device)
+                        norm_type='bn1d',
+                        down_steps=4).to(hyperparams.device)
 
-    gen = Generator(cgan=cgan, 
-                    n_inputs=hyperparams.latent_dim, 
-                    img_dim=hyperparams.img_dim, 
-                    n_classes=hyperparams.n_classes, 
-                    alpha_relu=hyperparams.alpha_relu,
-                    norm_type='bn').to(hyperparams.device)
+    gen = MnistFashionGenerator(
+                cgan=hyperparams.cgan, 
+                img_dim=hyperparams.img_dim, 
+                n_classes=hyperparams.n_classes,
+                n_inputs=hyperparams.latent_dim,
+                n_output = 256,
+                min_features = 64, 
+                max_features=512,
 
+                down_steps=5, 
+                bottleneck_size=2, 
+                up_steps=5,
 
+                norm_type='bn1d', 
+                norm_before=True, 
+                activation='lk_relu', 
+                alpha_relu=hyperparams.alpha_relu, 
+                use_bias=True,
+                ).to(hyperparams.device)
+    
     # Optimizers
     optimization = Optimization(gen, disc, hyperparams, cgan)
 
     # Start training
-    optimization.train(mnist_data.dataloader, experiment="vanilla")
+    optimization.train(mnist_data.dataloader, experiment="vanilla_gan_tanh_w_norma_latent_64")

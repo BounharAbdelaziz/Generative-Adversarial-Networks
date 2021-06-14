@@ -47,11 +47,17 @@ class NormalizationLayer(nn.Module):
     def __init__(self, in_features, norm_type='bn'):
         super().__init__()
 
-        if norm_type == 'bn' :
+        if norm_type == 'bn2d' :
             self.norm = nn.BatchNorm2d(in_features)
 
-        elif norm_type == 'in' :
+        elif norm_type == 'in2d' :
             self.norm = nn.InstanceNorm2d(in_features)
+
+        if norm_type == 'bn1d' :
+            self.norm = nn.BatchNorm1d(in_features)
+
+        elif norm_type == 'in1d' :
+            self.norm = nn.InstanceNorm1d(in_features)
 
         elif norm_type == 'none' :
             self.norm = lambda x : x
@@ -97,6 +103,7 @@ class LinearLayer(nn.Module):
         else :
             out = self.activation(out)
             out = self.norm(out)
+        
         return out
 
 # -----------------------------------------------------------------------------#

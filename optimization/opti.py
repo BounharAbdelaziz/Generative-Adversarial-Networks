@@ -14,7 +14,7 @@ from tqdm import tqdm
 
 class Optimization():
   
-  def __init__(self, gen, disc, hyperparams, cgan=True, n_input=784, lambda_gan_gen=1.85, lambda_gan_disc=0.85, n_channels=256):
+  def __init__(self, gen, disc, hyperparams, cgan=False, n_input=784, lambda_gan_gen=1, lambda_gan_disc=1):
 
     self.generator = gen
     self.discriminator = disc
@@ -27,10 +27,11 @@ class Optimization():
     self.cgan = cgan
     self.lambda_gan_gen = lambda_gan_gen
     self.lambda_gan_disc = lambda_gan_disc
-    self.n_channels = n_channels
+    # self.n_channels = n_channels
 
     # Fixed noise vector to see the evolution of the generated images
-    self.fixed_noise_vect = torch.randn(self.hyperparams.batch_size, self.n_channels, self.hyperparams.latent_dim, self.hyperparams.latent_dim).to(self.hyperparams.device)
+    self.fixed_noise_vect = torch.randn(self.hyperparams.batch_size, self.hyperparams.latent_dim).to(self.hyperparams.device)
+
     if cgan :
       fixed_y_fake = torch.eye(self.hyperparams.n_classes)[np.argmax(torch.randn((self.hyperparams.batch_size, self.hyperparams.n_classes)) , axis=1)].to(self.hyperparams.device)
       self.fixed_noise_vect = torch.column_stack((self.fixed_noise_vect, fixed_y_fake))
@@ -90,15 +91,19 @@ class Optimization():
 
     if self.hyperparams.device != 'cpu':
       # using DataParallel tu copy the Tensors on all available GPUs
-      print("[INFO] Copying tensors to all available GPUs...")
       device_ids = [i for i in range(torch.cuda.device_count())]
+      print(f'[INFO] Copying tensors to all available GPUs : {device_ids}')
+      # if len(device_ids) > 1 :
       self.generator = nn.DataParallel(self.generator, device_ids)
       self.discriminator = nn.DataParallel(self.discriminator, device_ids)
+      self.generator.to(self.hyperparams.device)
+      self.discriminator.to(self.hyperparams.device)
 
     for epoch in tqdm(range(self.hyperparams.n_epochs)):
       print("epoch = ",epoch," --------------------------------------------------------")
 
       for batch_idx, real_data in enumerate(dataloader) :        
+        # print("[INFO] real_data.shape : ", real_data.shape)
 
         real_data = real_data.view(-1, self.hyperparams.img_dim).to(self.hyperparams.device)
 
@@ -109,11 +114,12 @@ class Optimization():
         ##########################################
 
         # we generate an image from a noise vector
-        noise = torch.randn(self.hyperparams.batch_size, self.n_channels, self.hyperparams.latent_dim, self.hyperparams.latent_dim).to(self.hyperparams.device)
+        noise = torch.randn(self.hyperparams.batch_size, self.hyperparams.latent_dim).to(self.hyperparams.device)
         if self.hyperparams.cgan :
           y_fake = torch.eye(self.hyperparams.n_classes)[np.argmax(torch.randn((self.hyperparams.batch_size, self.hyperparams.n_classes)) , axis=1)].to(self.hyperparams.device)
           noise = torch.column_stack((noise, y_fake))
 
+        # print("[INFO] noise.shape : ", noise.shape)
         fake_data = self.generator(noise)
                   
         # prediction of the discriminator on real an fake images in the batch
@@ -156,8 +162,9 @@ class Optimization():
           # show advance
           print("[INFO] logging advance...")
           with torch.no_grad():
-            print("[INFO] fixed_noise_vect : ",self.fixed_noise_vect.shape)
+            print("[INFO] fixed_noise_vect.shape : ",self.fixed_noise_vect.shape)
 
+            # generate images
             fake_data_ = self.generator(self.fixed_noise_vect)
 
             fake_data_ = fake_data_[:, :self.hyperparams.img_dim].reshape(-1, 1, h, w)
@@ -181,5 +188,5 @@ class Optimization():
     print("[INFO] Saving weights last step...")
     print(os.curdir)
     print(os.path.abspath(self.PATH_CKPT))
-    torch.save(self.discriminator.state_dict(), os.path.join(self.PATH_CKPT,"D_it_"+str(step)+".pth"))
-    torch.save(self.generator.state_dict(), os.path.join(self.PATH_CKPT,"G_it_"+str(step)+".pth"))
+    torch.save(self.discriminator.state_dict(), os.path.join(self.PATH_CKPT,"D2_it_"+str(step)+".pth"))
+    torch.save(self.generator.state_dict(), os.path.join(self.PATH_CKPT,"G2_it_"+str(step)+".pth"))
