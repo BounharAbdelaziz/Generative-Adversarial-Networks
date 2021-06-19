@@ -4,7 +4,7 @@ class Hyperparameters():
   
   def __init__(self, lr=0.00002, batch_size=32, n_epochs=50, latent_dim=128, img_dim=784, n_output_disc=1, n_classes=10, alpha_relu=0.15, cgan=True, show_advance=25, save_weights=1000):
 
-    self.device = "cuda" if torch.cuda.is_available() else "cpu"
+    self.device = "cuda:0" if torch.cuda.is_available() else "cpu"
     self.lr = lr
     self.batch_size = batch_size
     self.n_epochs = n_epochs
