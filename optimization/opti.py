@@ -14,7 +14,7 @@ from tqdm import tqdm
 
 class Optimization():
   
-  def __init__(self, gen, disc, hyperparams, cgan=False, n_input=784, lambda_gan_gen=1, lambda_gan_disc=1):
+  def __init__(self, gen, disc, hyperparams, cgan=False, n_input=784, lambda_gan_gen=1, lambda_gan_disc=1, experiment="MNIST_FASHION",):
 
     self.generator = gen
     self.discriminator = disc
@@ -28,6 +28,11 @@ class Optimization():
     self.lambda_gan_gen = lambda_gan_gen
     self.lambda_gan_disc = lambda_gan_disc
     # self.n_channels = n_channels
+
+    self.experiment = experiment
+    self.tb_writer_fake = SummaryWriter(f"logs/{self.experiment}_GAN/fake_{self.experiment}")
+    self.tb_writer_real = SummaryWriter(f"logs/{self.experiment}_GAN/real_{self.experiment}")
+    self.tb_writer_loss = SummaryWriter(f"logs/{self.experiment}_GAN/loss_train_{self.experiment}")
 
     # Fixed noise vector to see the evolution of the generated images
     self.fixed_noise_vect = torch.randn(self.hyperparams.batch_size, self.hyperparams.latent_dim).to(self.hyperparams.device)
@@ -79,10 +84,10 @@ class Optimization():
 
     return loss_D
 
-  def train(self, dataloader, steps_train_disc=1, experiment="MNIST_FASHION", h=28, w=28):
+  def train(self, dataloader, steps_train_disc=1, h=28, w=28):
     step = 0
     cpt = 0
-    self.PATH_CKPT = "./check_points/"+experiment+"/"
+    self.PATH_CKPT = "./check_points/"+self.experiment+"/"
     
     if self.cgan :
       print("[INFO] Started training a Conditional GAN on the MNIST Fashion dataset, using device ",self.hyperparams.device,"...")
@@ -173,7 +178,8 @@ class Optimization():
             img_fake = torchvision.utils.make_grid(fake_data_, normalize=True)
             img_real = torchvision.utils.make_grid(real_data_, normalize=True)
 
-            helper.write_logs_tb(experiment, img_fake, img_real, loss_D, loss_G, step, epoch, self.hyperparams, with_print_logs=True)
+            helper.write_logs_tb(self.tb_writer_loss, self.tb_writer_fake, self.tb_writer_real, img_fake, img_real, loss_D, loss_G, step, epoch, self.hyperparams, with_print_logs=True)
+
             step = step + 1
 
         if batch_idx % self.hyperparams.save_weights == 0 and batch_idx!=0 :

@@ -1,11 +1,9 @@
 from torch.utils.tensorboard import SummaryWriter
 
 
-def write_logs_tb(experiment, img_fake, img_real, loss_D, loss_G, step, epoch, hyperparams, with_print_logs=True):
+def write_logs_tb(tb_writer_loss, tb_writer_fake, tb_writer_real, img_fake, img_real, loss_D, loss_G, step, epoch, hyperparams, with_print_logs=True):
 
-    tb_writer_fake = SummaryWriter(f"logs/{experiment}_GAN/fake_{experiment}")
-    tb_writer_real = SummaryWriter(f"logs/{experiment}_GAN/real_{experiment}")
-    tb_writer_loss = SummaryWriter(f"logs/{experiment}_GAN/loss_train_{experiment}")
+    
 
     # Adding loss values to tb
     tb_writer_loss.add_scalar(

@@ -29,6 +29,7 @@ if __name__ == "__main__":
     parser.add_argument("--lr", type=float, default=1e-04, help="Learning rate.")
     parser.add_argument("--save_weights", type=int, default=5000, help="Number of iterations before saving the weights")
     parser.add_argument("--show_advance", type=int, default=10, help="Number of iterations before showing advance (loss, images) in tensorboard")
+    parser.add_argument("--data_path", type=str, default='./data/fashion-mnist_train.csv', help="Path to the dataset.")
 
     args = parser.parse_args()
 
@@ -50,7 +51,7 @@ if __name__ == "__main__":
 
     # dateset
     with_normalization = args.with_normalization
-    mnist_data = MnistFashionData(path="./data/fashion-mnist_train.csv", cgan=cgan, with_normalization=with_normalization, bs=batch_size)
+    mnist_data = MnistFashionData(path=args.data_path, cgan=cgan, with_normalization=with_normalization, bs=batch_size)
 
     # Fixed noise vector to see the evolution of the generated images during the training
     fixed_noise_vect = torch.randn((hyperparams.batch_size,hyperparams.input_dim_gen)).to(hyperparams.device)
@@ -102,7 +103,7 @@ if __name__ == "__main__":
                 ).to(hyperparams.device)
     
     # Optimizers
-    optimization = Optimization(gen, disc, hyperparams, cgan)
+    optimization = Optimization(gen, disc, hyperparams, cgan, experiment="vanilla_gan_tanh_w_norma_latent_64")
 
     # Start training
-    optimization.train(mnist_data.dataloader, experiment="vanilla_gan_tanh_w_norma_latent_64")
+    optimization.train(mnist_data.dataloader)
